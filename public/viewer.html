@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Motion | Watch</title>
+    <link rel="stylesheet" href="/style/viewer.css">
+</head>
+<body>
+    <h1>SPECTATE MODE</h1>
+    <div id="roomId"></div>
+    <div id="status"></div>
+    <ul id="players"></ul> <!-- Change to list for dynamic updates -->
+    <button id="fullscreenBtn">Toggle Fullscreen</button>
+    <canvas id="game"></canvas>  
+    <button id="back">&lt;-</button>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const roomId = window.location.pathname.split('/').pop();
+        document.getElementById('roomId').innerText = `Lobby ID: ${roomId}`;
+
+        socket.emit('joinRoomAsViewer', roomId);
+
+        socket.on('connect_error', (err) => {
+            document.getElementById('status').innerText = `Connection error: ${err.message}`;
+        });
+
+        socket.on('roomJoined', (data) => {
+            document.getElementById('status').innerText = `Joined Lobby with ID -> ${data.roomId} as a viewer.`;
+        });
+
+        socket.on('roomNotFound', () => {
+            document.getElementById('status').innerText = `Room not found`;
+        });
+
+        socket.on('playersInRoom', (data) => {
+            const playersElement = document.getElementById('players');
+            playersElement.innerHTML = 'Players:';
+            data.Users.forEach((user) => {
+                const playerItem = document.createElement('li');
+                playerItem.innerText = `Player ID: ${user.id}`;
+                playersElement.appendChild(playerItem);
+            });
+        });
+
+        socket.on('gameReady', () => {
+            const statusElement = document.getElementById('status');
+            statusElement.innerText = `Game ready to start!`;
+            statusElement.style.color = 'green'; 
+        });
+
+        socket.on('gameNotReady', () => {
+            document.getElementById('status').innerText = `Not enough players to start the game.`;
+        });
+
+        socket.on('gameStarted', (data) => {
+            document.getElementById('status').innerText = `Game started!`;
+            console.log(data);
+        });
+
+        socket.on('gameEnded', () => {
+            document.getElementById('status').innerText = `Game ended!`;
+        });
+
+        socket.on('updatePositions', (data) => {
+            // {Users: [{id: 'player1', position: { x: 0, y: 0 }}, {id: 'player2', position: { x: 0, y: 0 }}]}
+            console.log(data);
+        });
+
+        document.getElementById('back').addEventListener('click', function() {
+            window.location.href = '/'; 
+        });
+
+        document.getElementById('fullscreenBtn').addEventListener('click', function() {
+            const canvas = document.getElementById('game');
+            const requestFullscreen = canvas.requestFullscreen || canvas.mozRequestFullScreen || canvas.webkitRequestFullscreen || canvas.msRequestFullscreen;
+            const exitFullscreen = document.exitFullscreen || document.mozCancelFullScreen || document.webkitExitFullscreen || document.msExitFullscreen;
+
+            if (!document.fullscreenElement) {
+            requestFullscreen.call(canvas).catch(err => {
+                alert("Fullscreen mode failed to activate. Make sure you're using a compatible browser and your site is served over HTTPS.");
+                console.error("Error attempting to enable fullscreen mode:", err.message);
+            });
+            } else {
+            exitFullscreen.call(document).catch(err => {
+                alert("Failed to exit fullscreen mode.");
+                console.error("Error attempting to disable fullscreen mode:", err.message);
+            });
+            }
+        });
+    </script>
+</body>
+</html>
